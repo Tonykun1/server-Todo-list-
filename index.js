@@ -1,11 +1,9 @@
 const express = require('express');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
-const cors = require('cors'); // Import cors package
-
+const cors = require('cors'); 
 const server = express();
-server.use(cors()); // Enable CORS for all routes
-
+server.use(cors()); 
 server.use(express.json());
 
 server.get('/', (req, res) => {
@@ -52,7 +50,6 @@ server.post('/todo', (req, res) => {
     fs.readFile('data/todoJson.json', 'utf-8', (error, data) => {
         if (error) {
             console.error(error);
-            res.status(500).json({ error: 'Error reading the file' });
             return;
         }
         const todos = JSON.parse(data);
@@ -60,7 +57,6 @@ server.post('/todo', (req, res) => {
         fs.writeFile('data/todoJson.json', JSON.stringify(todos,null,2), (error) => {
             if (error) {
                 console.error(error);
-                res.status(500).json({ error: 'Error writing the file' });
                 return;
             }
             res.json(newTodo);
@@ -75,7 +71,6 @@ server.put('/todo/:id', (req, res) => {
     fs.readFile('data/todoJson.json', 'utf-8', (error, data) => {
         if (error) {
             console.error(error);
-            res.status(500).json({ error: 'Error reading the file' });
             return;
         }
         let todos = JSON.parse(data);
@@ -102,7 +97,6 @@ server.delete('/todo/:id', (req, res) => {
     fs.readFile('data/todoJson.json', 'utf-8', (error, data) => {
         if (error) {
             console.error(error);
-            res.status(500).json({ error: 'Error reading the file' });
             return;
         }
         let todos = JSON.parse(data);
@@ -116,7 +110,6 @@ server.delete('/todo/:id', (req, res) => {
         fs.writeFile('data/todoJson.json', JSON.stringify(todos,null,2), (error) => {
             if (error) {
                 console.error(error);
-                res.status(500).json({ error: 'Error writing the file' });
                 return;
             }
 
@@ -124,27 +117,7 @@ server.delete('/todo/:id', (req, res) => {
         });
     });
 });
-server.delete('/todos/checked', (req, res) => {
-    fs.readFile('data/todoJson.json', 'utf-8', (error, data) => {
-      if (error) {
-        console.error(error);
-        return res.status(500).send('Server Error');
-      }
-      let todos = JSON.parse(data);
-  
-   
-      const updatedTodos = todos.filter((todo) => !todo.checked);
-  
 
-      fs.writeFile('data/todoJson.json', JSON.stringify(updatedTodos, null, 2), (error) => {
-        if (error) {
-          console.error(error);
-          return res.status(500).send('Server Error');
-        }
-        res.json({ message: 'Checked todos deleted', updatedTodos });
-      });
-    });
-  });
   
 
 server.listen(3050, () => {
