@@ -3,11 +3,13 @@ const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const cors = require('cors'); 
 const server = express();
+const jwt = require('jsonwebtoken');
+
 const port=process.env.PORT||3050
 
 const TOKEN_EXPIRATION_DAYS = 14;
 const MILLISECONDS_IN_A_DAY = 24 * 60 * 60 * 1000;
-
+const SECRET_KEY = "TonySama?1345?fsdfff4?2345?ZXasd?314?vcxh?ers!dfas#fa@fas%$fgdsa"; 
 
 server.use(cors()); 
 server.use(express.json());
@@ -140,7 +142,10 @@ server.post('/generateToken', (req, res) => {
             const userIndex = users.findIndex(user => user.name === name && user.password === password && user.Email === Email);
 
             if (userIndex === -1) {
-                const newUser = { name, password, Email, token: uuidv4(), lastTokenUpdate: Date.now() };
+                const newUser = {id: uuidv4(), name, password, Email };
+                const token = jwt.sign({ name, Email}, SECRET_KEY, { expiresIn: `14d` });
+                newUser.token = token;
+                newUser.lastTokenUpdate = Date.now();
                 users.push(newUser);
 
                 fs.writeFile('data/Login.json', JSON.stringify(users), (err) => {
@@ -149,14 +154,14 @@ server.post('/generateToken', (req, res) => {
                         return res.status(500).json({ error: 'Failed to write file' });
                     }
 
-                    res.json({ token: newUser.token });
+                    res.json({ token });
                 });
             } else {
-                const token = uuidv4();
+                const token = jwt.sign({ name, Email, id: uuidv4()}, SECRET_KEY, { expiresIn: `14d` });
                 users[userIndex].token = token;
                 users[userIndex].lastTokenUpdate = Date.now();
 
-                fs.writeFile('data/Login.json', JSON.stringify(users, null, 2), (err) => {
+                fs.writeFile('data/Login.json', JSON.stringify(users), (err) => {
                     if (err) {
                         console.error(err);
                         return res.status(500).json({ error: 'Failed to write file' });
@@ -175,41 +180,47 @@ server.post('/generateToken', (req, res) => {
 server.post('/:token', (req, res) => {
     const { token } = req.params;
 
-    fs.readFile('data/Login.json', 'utf-8', (error, data) => {
-        if (error) {
-            console.error(error);
-            return res.status(500).json({ error: 'Failed to read file' });
+    jwt.verify(token, SECRET_KEY, (err, decoded) => {
+        if (err) {
+            return res.status(401).json({ error: 'Invalid token' });
         }
-        try {
-            const users = data ? JSON.parse(data) : [];
-            const findUser = users.find(item => item.token === token);
 
-            if (findUser) {
-                const currentTime = Date.now();
-                const tokenAge = currentTime - findUser.lastTokenUpdate;
-
-                if (tokenAge > TOKEN_EXPIRATION_DAYS * MILLISECONDS_IN_A_DAY) {
-                    findUser.token = uuidv4();
-                    findUser.lastTokenUpdate = currentTime;
-
-                    fs.writeFile('data/Login.json', JSON.stringify(users, null, 2), (err) => {
-                        if (err) {
-                            console.error(err);
-                            return res.status(500).json({ error: 'Failed to write file' });
-                        }
-
-                        res.json(findUser);
-                    });
-                } else {
-                    res.json(findUser);
-                }
-            } else {
-                res.status(404).json({ error: 'User not found' });
+        fs.readFile('data/Login.json', 'utf-8', (error, data) => {
+            if (error) {
+                console.error(error);
+                return res.status(500).json({ error: 'Failed to read file' });
             }
-        } catch (errorConnected) {
-            console.error(errorConnected);
-            res.status(500).json({ error: 'Failed to parse JSON' });
-        }
+            try {
+                const users = data ? JSON.parse(data) : [];
+                const findUser = users.find(user => user.name === decoded.name && user.Email === decoded.Email);
+
+                if (findUser) {
+                    const currentTime = Date.now();
+                    const tokenAge = currentTime - findUser.lastTokenUpdate;
+
+                    if (tokenAge >TOKEN_EXPIRATION_DAYS * MILLISECONDS_IN_A_DAY) {
+                        findUser.token = jwt.sign({ name: findUser.name, Email: findUser.Email, id: uuidv4() }, SECRET_KEY, { expiresIn: `14d` });
+                        findUser.lastTokenUpdate = currentTime;
+
+                        fs.writeFile('data/Login.json', JSON.stringify(users), (err) => {
+                            if (err) {
+                                console.error(err);
+                                return res.status(500).json({ error: 'Failed to write file' });
+                            }
+
+                            res.json(findUser);
+                        });
+                    } else {
+                        res.json(findUser);
+                    }
+                } else {
+                    res.status(404).json({ error: 'User not found' });
+                }
+            } catch (errorConnected) {
+                console.error(errorConnected);
+                res.status(500).json({ error: 'Failed to parse JSON' });
+            }
+        });
     });
 });
   
